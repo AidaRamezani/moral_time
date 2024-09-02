@@ -1,0 +1,123 @@
+---
+title: "Interactive Plot for Aida"
+author: "Aida Ramezani, Warren Zhu"
+output: 
+    html_document:
+        toc: TRUE
+        toc_float: TRUE
+---
+
+```{r setup, echo=FALSE, message=FALSE, warning=FALSE}
+# Set up everything here.
+library(data.table)
+library(tidyverse)
+library(ggplot2)
+
+library(plotly)
+library(crosstalk)
+library(knitr)
+```
+
+```{r data, echo=FALSE, message=FALSE, warning=FALSE}
+# Load the data
+coha <- data.table::fread("ts_df.csv")
+coha <- aggregate(coha$outputs_z, coha[, c(2, 3, 5)], mean)
+nyt <- data.table::fread("nyt_ts_df.csv")
+nyt <- aggregate(nyt$outputs_z, nyt[, c(2, 3, 5)], mean)
+# Rename property accordingly
+coha <- coha %>% 
+  mutate(across('property', str_replace, 'polarity', 'Moral Polarity')) %>%
+  mutate(across('property', str_replace, 'previous_link', 'Moral Relevance'))
+nyt <- nyt %>% 
+  mutate(across('property', str_replace, 'polarity', 'Moral Polarity')) %>%
+  mutate(across('property', str_replace, 'previous_link', 'Moral Relevance'))
+```
+
+```{r simplify, eval=FALSE, echo=FALSE, message=FALSE, warning=FALSE}
+# Simplify the data so the graph is made faster
+# Only run this when testing
+# When making the final version, change eval to false
+coha <-filter(coha, words %in% c("ab", "alcohol",'juice'))
+nyt <-filter(nyt, words %in% c("ab", "alcohol",'juice'))
+```
+
+$$\\[0.2in]$$
+
+## Interactive plots {.tabset}
+
+Interactive plots for both the NYT and COHA dataset are below.
+
+### COHA
+
+Some description regarding this graph for COHA
+
+```{r coha, echo=FALSE, message=FALSE, warning=FALSE}
+sd_coha <- SharedData$new(coha)
+
+# Code for the dropdown menus
+word_filter_coha <- crosstalk::filter_select(
+  "filter1", "Select words to examine",
+  sd_coha, ~words, multiple = T)
+type_filter_coha <- crosstalk::filter_select(
+  "filter2", "Displayed Information",
+  sd_coha, ~property, multiple = F)
+
+# Code for plot
+plot_coha <- plot_ly(sd_coha, x = ~year, y = ~x, color=~words, 
+                type ='scatter', mode ='lines',line_shape='spline') %>%
+  layout(title = 'Predicted Values for the COHA Corpus', 
+         xaxis=list(title = 'Year'),
+         yaxis=list(title = 'Predicted Value'),
+         legend = list(title=list(text='<b> Words </b>')))
+
+# Plot + menus
+bscols(widths = c(9, 3, 12), 
+       word_filter_coha, type_filter_coha, plot_coha)
+
+# Menu default options are set in the .js codechunk at the very bottom
+```
+
+
+### NYT
+
+Some description regarding this graph for NYT
+
+```{r nyt, echo=FALSE, message=FALSE, warning=FALSE}
+sd_nyt <- SharedData$new(nyt)
+
+# Code for the dropdown menus
+word_filter_nyt <- crosstalk::filter_select(
+  "filter3", "Select words to examine",
+  sd_nyt, ~words, multiple = T)
+type_filter_nyt <- crosstalk::filter_select(
+  "filter4", "Displayed Information",
+  sd_nyt, ~property, multiple = F)
+
+# Code for plot
+plot_nyt <- plot_ly(sd_nyt, x = ~year, y = ~x, color=~words, 
+                    type ='scatter', mode ='lines',line_shape='spline') %>%
+  layout(title ='Predicted Values for the NYT Corpus', 
+         xaxis=list(title = 'Year'),
+         yaxis=list(title = 'Predicted Value'),
+         legend = list(title=list(text='<b> Words </b>')))
+
+# Plot + menus
+bscols(widths = c(9, 3, 12), 
+       word_filter_nyt, type_filter_nyt, plot_nyt)
+
+# Menu default options are set in the .js codechunk at the very bottom
+```
+
+```{js, echo=FALSE, message=FALSE, warning=FALSE}
+function filter_default() {
+    document.getElementById("filter1").getElementsByClassName("selectized")[0].selectize.removeOption("");
+    document.getElementById("filter1").getElementsByClassName("selectized") [0].selectize.setValue(["alcohol","juice"]);
+      document.getElementById("filter2").getElementsByClassName("selectized")[0].selectize.removeOption("");
+    document.getElementById("filter2").getElementsByClassName("selectized") [0].selectize.setValue("Moral Polarity");
+      document.getElementById("filter3").getElementsByClassName("selectized")[0].selectize.removeOption("");
+    document.getElementById("filter3").getElementsByClassName("selectized") [0].selectize.setValue(["alcohol","juice"]);
+      document.getElementById("filter4").getElementsByClassName("selectized")[0].selectize.removeOption("");
+    document.getElementById("filter4").getElementsByClassName("selectized") [0].selectize.setValue("Moral Polarity");
+ }
+window.onload = filter_default;
+```
